@@ -1148,9 +1148,11 @@ Deno.serve(async (req) => {
     const resumeToken = crypto.randomUUID();
     await admin.from("conversations").update({ pending_reply_token: resumeToken }).eq("id", convId);
     // @ts-ignore
-    EdgeRuntime.waitUntil(
-      scheduleReply(admin, convId, rawFrom, (conv.contacts as any).phone, conv.contact_id, (conv.contacts as any).name, lastIn.created_at, resumeToken),
-    );
+    try {
+      await scheduleReply(admin, convId, rawFrom, (conv.contacts as any).phone, conv.contact_id, (conv.contacts as any).name, lastIn.created_at, resumeToken);
+    } catch (e) {
+      console.error("safety_resume_failed", String(e));
+    }
     return json({ ok: true, resumed: true, token: resumeToken });
   }
 
