@@ -1515,9 +1515,14 @@ Deno.serve(async (req) => {
   // Debounce + resposta particionada em background — responde SÓ depois de
   // DEBOUNCE_MS sem novas mensagens, e simula digitação humana entre chunks.
   // @ts-ignore — EdgeRuntime é global no Supabase Edge Runtime
-  EdgeRuntime.waitUntil(
-    scheduleReply(admin, convId, rawFrom, phone, contact.id, contact.name ?? contactName, messageCreatedAt, replyToken),
-  );
+  // IMPORTANTE: aguardamos a execução dentro da própria request. Usar
+  // EdgeRuntime.waitUntil fazia o isolate ser encerrado durante o debounce
+  // (sleep de 8s), matando a resposta antes de ela ser gerada.
+  try {
+    await scheduleReply(admin, convId, rawFrom, phone, contact.id, contact.name ?? contactName, messageCreatedAt, replyToken);
+  } catch (e) {
+    console.error("schedule_reply_failed", String(e));
+  }
 
   return json({ ok: true, scheduled: true, debounce_ms: DEBOUNCE_MS, token: replyToken });
 });
